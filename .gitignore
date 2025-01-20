@@ -1,0 +1,30 @@
+# Virtual environment (Virtuální prostředí)
+venv/
+.env/
+.venv/
+.projekt3/
+
+# Python temporary files (Dočasné soubory Pythonu)
+__pycache__/
+*.py[cod]
+
+# Confidential files (Důvěrné soubory)
+.env
+secrets.json
+
+# Artifacts (Artefakty)
+*.png
+*.jpg
+*.pdf
+
+# System files (Systémové soubory)
+.DS_Store
+Thumbs.db
+
+# Backups (Zálohy)
+*~
+*.bak
+*.tmp
+
+# Editors (Editoři)
+.vscode/
