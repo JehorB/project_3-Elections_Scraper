@@ -14,6 +14,21 @@ from time import sleep
 from bs4 import BeautifulSoup
 import requests
 
+# Kontrola vstupu příkazového řádku / Checks command line arguments
+def validate_cmd():
+    if len(sys.argv) != 3:
+        print(f"Chyba: Očekávány jsou 2 argumenty - název uzemí a název souboru s daty.")
+        print(f"Použití: python volby_2017.py <název_uzemí> <vysledky_obec.csv>")
+        print(f"Zkuste to znovu")
+        sleep(3)
+        sys.exit(1)
+    else:
+        cmd_vstup = sys.argv[1:]
+        
+    return cmd_vstup
+
+
+
 
 # Stáhne HTML stránku a vrátí její obsah jako text / Downloads HTML page
 def get_html(url):
@@ -66,33 +81,26 @@ def get_okres_url(html):
     return okres_dict
 
 
-# Kontroluje argumenty příkazového řádku / Checks command line arguments
-"""
-def overit_argumenty(url_seznam_obci)
-    if len(sys.argv) != 3:
-        print(f"Chyba: Očekávány jsou 2 argumenty - název obce a název souboru s daty.")
-        print(f"Použití: python volby_2017.py <název_obce> <vysledky_obec.csv>")
-        print(f"Zkuste to znovu")
-        sleep(3)
-        sys.exit(1)
-"""
+
 
 
 if __name__ == "__main__":
+    cmd_args = validate_cmd()
     # Odkaz na výsledky voleb
     url_volby_2017 = "https://www.volby.cz/pls/ps2017nss/ps3?xjazyk=CZ"
     html_main = get_html(url_volby_2017)
     okres_urls = get_okres_url(html_main)
     
     # Testy: zakomentuj před odevzdáním
-    print("Stránka byla úspěšně načtena.")
-    print("\nKontrola okresních URL:")
-    for i, (okres, url) in enumerate(okres_urls.items(), start=1):
-        try:
-            response = requests.get(url, timeout=5)  # Таймаут 5 секунд
-            if response.status_code == 200:
-                print(f"{i}. ✅ {okres}: OK ({url})")
-            else:
-                print(f"{i}. ❌ {okres}: CHYBA {response.status_code} ({url})")
-        except requests.exceptions.RequestException as e:
-            print(f"{i}. ⚠️ {okres}: Síťová chyba ({url}) ({e})")
+    print(cmd_args)
+    # print("Stránka byla úspěšně načtena.")
+    # print("\nKontrola okresních URL:")
+    # for i, (okres, url) in enumerate(okres_urls.items(), start=1):
+    #     try:
+    #         response = requests.get(url, timeout=5)  # Таймаут 5 секунд
+    #         if response.status_code == 200:
+    #             print(f"{i}. ✅ {okres}: OK ({url})")
+    #         else:
+    #             print(f"{i}. ❌ {okres}: CHYBA {response.status_code} ({url})")
+    #     except requests.exceptions.RequestException as e:
+    #         print(f"{i}. ⚠️ {okres}: Síťová chyba ({url}) ({e})")
