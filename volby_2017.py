@@ -22,12 +22,39 @@ def validate_cmd():
         print(f"Zkuste to znovu")
         sleep(3)
         sys.exit(1)
-    else:
-        cmd_vstup = sys.argv[1:]
-        
+
+    cmd_vstup = [arg.strip() for arg in sys.argv[1:]]
     return cmd_vstup
 
+# Kontrola 1.argumentu příkazového řádku / Checks arguments command line arguments
+def validate_args_okres(uzemi, okres_dict):
+    translit_map = str.maketrans("áčďéěíňóřšťúůýžÚČŠŽ", "acdeeinorstuuyzUCSZ")
+    if uzemi in okres_dict:
+        return okres_dict[uzemi]
+    uzemi_translit = uzemi.translate(translit_map).lower()
+    for key, url in okres_dict.items():
+        if key.translate(translit_map).lower() == uzemi_translit:
+            return url
+    
+    # Práce s chybou
+    first_letter = uzemi[0].lower() # Получаем первую букву введённого округа
+    # Фильтруем список округов
+    podobne_okresy = [okres for okres in okres_dict if okres.lower().startswith(first_letter)]
+    # Выводим список
+    if podobne_okresy:
+        print("📌 Možná jste mysleli:", ", ".join(podobne_okresy))
+    else:
+        print("📌 Žádné podobné okresy nenalezeny.")
+    sleep(3)
+    sys.exit(1)
 
+
+# Kontrola 2.argumentu příkazového řádku / Checks arguments command line arguments
+def validate_args_filename(filename: str) -> str:
+    file_name = re.sub(r'[\\/:;"*?<>|]', '_', filename) # Odstranění neplatných znaků
+    if not file_name.endswith(".csv"):
+        file_name += ".csv"
+    return file_name
 
 
 # Stáhne HTML stránku a vrátí její obsah jako text / Downloads HTML page
@@ -86,13 +113,16 @@ def get_okres_url(html):
 
 if __name__ == "__main__":
     cmd_args = validate_cmd()
+    uzemi, filename = cmd_args
+    filename = validate_args_filename(filename)
     # Odkaz na výsledky voleb
     url_volby_2017 = "https://www.volby.cz/pls/ps2017nss/ps3?xjazyk=CZ"
     html_main = get_html(url_volby_2017)
     okres_urls = get_okres_url(html_main)
+    url_uzemi = validate_args_okres(uzemi, okres_urls)
     
     # Testy: zakomentuj před odevzdáním
-    print(cmd_args)
+    print(url_uzemi)
     # print("Stránka byla úspěšně načtena.")
     # print("\nKontrola okresních URL:")
     # for i, (okres, url) in enumerate(okres_urls.items(), start=1):
