@@ -17,10 +17,11 @@ import requests
 # Stáhne HTML stránku a vrátí její obsah jako text / Downloads HTML page
 def get_html(url):
     headers = {
-        "User-Agent":
-        ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/109.0.0.0 Safari/537.36")
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/109.0.0.0 Safari/537.36"
+            )
     }
 
     try:
@@ -129,7 +130,45 @@ def get_obce_urls(html):
             obce_dict[link] = (number, name)  # ✅ Теперь link — ключ, а number и name — значения
     return obce_dict
 
-
+def result_election(obce_hlasy: dict):
+    vyber_dict = {}
+    for url, obec in obce_hlasy.items():
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/109.0.0.0 Safari/537.36"
+            )
+        }
+        response = requests.get(url, headers=headers)
+        soup = BeautifulSoup(response.text, "html.parser")  # Создаём объект BeautifulSoup
+        celkovy_pocet = [
+            " ".join(th.stripped_strings)
+            for th in soup.find_all("th", attrs={"data-rel":"L1"})
+            if th.get("id") != "sa5"
+        ]
+        celkovy_hlasy = [
+            td.get_text(strip=True).replace("\xa0", " ").strip()
+            for td in soup.find_all("td", attrs={"data-rel":"L1"})
+            if "sa5" not in td.get("headers") != "sa5"
+        ]
+        strana = [td.get_text(strip=True) for td in soup.select("td.overflow_name")]
+        hlasy = [
+            td.get_text(strip=True)
+            for td in soup.find_all("td", class_="cislo", attrs={
+                "headers": re.compile(r"t\d+sb3")}
+            )
+        ]
+        # Записываем в словарь, чтобы было понятно, какие данные к чему относятся
+        vyber_dict[obec] = {
+            "Celkový počet": celkovy_pocet,
+            "Celkové hlasy": celkovy_hlasy,
+            "Strany": strana,
+            "Hlasy": hlasy,
+        }
+    return vyber_dict
+        
+    pass
 
 def main():
     pass
@@ -148,18 +187,19 @@ if __name__ == "__main__":
     filename = validate_args_filename(filename)
     html_uzemi = get_html(url_uzemi)
     obce_urls = get_obce_urls(html_uzemi)
+    volby = result_election(obce_urls)
 
-    # Testy: zakomentuj před odevzdáním
-    print(len(obce_urls)) # контрольный вывод данных
-    # print(obce_urls)
+    # TESTS: zakomentuj před odevzdáním
     # print("Stránka byla úspěšně načtena.")
-    print("\nKontrola okresních URL:")
-    for i, (url, obec) in enumerate(obce_urls.items(), start=1):
-        try:
-            response = requests.get(url, timeout=5)  # Таймаут 5 секунд
-            if response.status_code == 200:
-                print(f"{i}. ✅ {obec[1]:<12}: OK ({url})")
-            else:
-                print(f"{i}. ❌ {obec[1]:<12}: CHYBA {response.status_code} ({url})")
-        except requests.exceptions.RequestException as e:
-            print(f"{i}. ⚠️ {obec[1]:<12}: Síťová chyba ({url}) ({e})")
+    print(volby) # контрольный вывод данных
+    # "Kontrola okresních URL:"
+    # for i, (url, obec) in enumerate(obce_urls.items(), start=1):
+    #     try:
+    #         response = requests.get(url, timeout=5)  # Таймаут 5 секунд
+    #         if response.status_code == 200:
+    #             print(f"{i}. ✅ {obec[1]:<12}: OK ({url})")
+    #         else:
+    #             print(f"{i}. ❌ {obec[1]:<12}: CHYBA {response.status_code} ({url})")
+    #     except requests.exceptions.RequestException as e:
+    #         print(f"{i}. ⚠️ {obec[1]:<12}: Síťová chyba ({url}) ({e})")
+    # print([i[1] for i in obce_urls.values()])
