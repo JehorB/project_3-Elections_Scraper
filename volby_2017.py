@@ -81,9 +81,19 @@ def validate_cmd():
 # Kontrola 1.argumentu příkazového řádku / Checks arguments command line arguments
 def validate_args_okres(uzemi, okres_dict):
     translit_map = str.maketrans("áčďéěíňóřšťúůýžÚČŠŽ", "acdeeinorstuuyzUCSZ")
+    uzemi_translit = uzemi.translate(translit_map).lower()
+
+    if uzemi_translit == "zahranici":
+        print("Detekován speciální případ: Zahraničí")
+        url_zahranici = okres_dict.get("Zahraničí")
+        if url_zahranici:
+            return parse_zahranici(url_zahranici)
+        else:
+            print("Chyba: 'Zahraničí' nebylo nalezeno v seznamu okresů!")
+        sys.exit(1)
+
     if uzemi in okres_dict:
         return okres_dict[uzemi]
-    uzemi_translit = uzemi.translate(translit_map).lower()
     for key, url in okres_dict.items():
         if key.translate(translit_map).lower() == uzemi_translit:
             return url
@@ -206,8 +216,22 @@ def write_to_csv(volby, uzemi, filename):
             writer.writerow(row)
     return f"Soubor '{filename}' je uložen do složky '{folder}'"
 
+def parse_zahranici():
+    """
+    Специальная функция для обработки голосования за границей.
+    """
+    print("🌍 Spouštím speciální scraping pro Zahraničí...")
+    
+    url_zahranici = "https://www.volby.cz/pls/ps2017nss/ps32?xjazyk=CZ&xkraj=99"
+    html = get_html(url_zahranici)
+    
+    # Здесь нужно реализовать логику парсинга для "Zahraničí"
+    # Например, можно вызывать result_election() с особыми параметрами
+    
+    return html  # Или другой обработанный результат
+
 def main():
-    # Odkaz na výsledky voleb
+    Odkaz na výsledky voleb
     url_volby_2017 = "https://www.volby.cz/pls/ps2017nss/ps3?xjazyk=CZ"
     cmd_args = validate_cmd()
     uzemi, filename = cmd_args
@@ -229,9 +253,24 @@ def main():
 
 if __name__ == "__main__":
     main()
+    # url_volby_2017 = "https://www.volby.cz/pls/ps2017nss/ps3?xjazyk=CZ"
+    # cmd_args = validate_cmd()
+    # uzemi, filename = cmd_args
+    # html_main = get_html(url_volby_2017)
+    # okres_urls = get_okres_url(html_main)
+    # url_uzemi = validate_args_okres(uzemi, okres_urls)
+    # filename = validate_args_filename(filename)
+    # html_uzemi = get_html(url_uzemi)
+    # obce_urls = get_obce_urls(html_uzemi)
+    # volby = result_election(obce_urls)
+    # print(f"Všechna data jsou připravena pro zápis do {filename}")
+    # sleep(3)
+    # finale = write_to_csv(volby, uzemi, filename)
+    # print(finale)
+    # sleep(3)
     # TESTS: zakomentuj před odevzdáním
     # print("Stránka byla úspěšně načtena.")
-    # print(volby) # контрольный вывод данных
+    # print(okres_urls) # контрольный вывод данных
     # "Kontrola okresních URL:"
     # for i, (url, obec) in enumerate(obce_urls.items(), start=1):
     #     try:
