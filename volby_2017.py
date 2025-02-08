@@ -9,6 +9,7 @@ email: yhr.baranov@post.cz
 import csv
 import re
 import sys
+from pathlib import Path
 from time import sleep
 
 from bs4 import BeautifulSoup
@@ -167,16 +168,45 @@ def result_election(obce_hlasy: dict):
             "Hlasy": hlasy,
         }
     return vyber_dict
-        
-    pass
+
+def write_to_csv(volby, uzemi, filename):
+    folder = Path("data_csv")  # Создаём объект пути
+    folder.mkdir(parents=True, exist_ok=True)  # Создаём папку, если её нет
+    file_path = folder / filename  # Автоматически соединяет путь
+    
+    all_parties = list(dict.fromkeys(
+        party for obec in volby for party in volby[obec]["Strany"]
+        )
+    )
+    fieldnames = [
+        "číslo", "obec", "voliči v seznamu",
+        "vydané obálky", "platné hlasy"] + all_parties
+
+    with open(file_path, "w", encoding="utf-8", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=fieldnames, dialect='excel')
+        writer.writeheader()
+
+        for (cislo, obec), data in volby.items():
+            row = {
+                "číslo": cislo,
+                "obec": obec,
+                "voliči v seznamu": data["Celkové hlasy"][0],  
+                "vydané obálky": data["Celkové hlasy"][1],  
+                "platné hlasy": data["Celkové hlasy"][2]
+            }
+
+            # Заполняем голоса по партиям
+            for party in all_parties:
+                if party in data["Strany"]:
+                    index = data["Strany"].index(party)
+                    row[party] = data["Hlasy"][index]  # Берём соответствующий голос
+                else:
+                    row[party] = "0"  # Если партии нет в этом городе, ставим 0
+
+            writer.writerow(row)
+    return f"Soubor '{filename}' je uložen do složky '{folder}'"
 
 def main():
-    pass
-    
-
-
-if __name__ == "__main__":
-    main()
     # Odkaz na výsledky voleb
     url_volby_2017 = "https://www.volby.cz/pls/ps2017nss/ps3?xjazyk=CZ"
     cmd_args = validate_cmd()
@@ -188,18 +218,28 @@ if __name__ == "__main__":
     html_uzemi = get_html(url_uzemi)
     obce_urls = get_obce_urls(html_uzemi)
     volby = result_election(obce_urls)
+    print(f"Všechna data jsou připravena pro zápis do {filename}")
+    sleep(3)
+    finale = write_to_csv(volby, uzemi, filename)
+    print(finale)
+    sleep(3)
+    
+    
 
+
+if __name__ == "__main__":
+    main()
     # TESTS: zakomentuj před odevzdáním
     # print("Stránka byla úspěšně načtena.")
-    print(volby) # контрольный вывод данных
+    # print(volby) # контрольный вывод данных
     # "Kontrola okresních URL:"
     # for i, (url, obec) in enumerate(obce_urls.items(), start=1):
     #     try:
     #         response = requests.get(url, timeout=5)  # Таймаут 5 секунд
     #         if response.status_code == 200:
-    #             print(f"{i}. ✅ {obec[1]:<12}: OK ({url})")
+    #             print(f"{i}. {obec[1]:<12}: OK ({url})")
     #         else:
-    #             print(f"{i}. ❌ {obec[1]:<12}: CHYBA {response.status_code} ({url})")
+    #             print(f"{i}. {obec[1]:<12}: CHYBA {response.status_code} ({url})")
     #     except requests.exceptions.RequestException as e:
-    #         print(f"{i}. ⚠️ {obec[1]:<12}: Síťová chyba ({url}) ({e})")
+    #         print(f"{i}. {obec[1]:<12}: Síťová chyba ({url}) ({e})")
     # print([i[1] for i in obce_urls.values()])
