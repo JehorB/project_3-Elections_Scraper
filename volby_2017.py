@@ -78,24 +78,16 @@ def validate_cmd():
     cmd_vstup = [arg.strip() for arg in sys.argv[1:]]
     return cmd_vstup
 
+def transliterate_input(text):
+    translit_map = str.maketrans("áčďéěíňóřšťúůýžÚČŠŽ", "acdeeinorstuuyzUCSZ")
+    return text.translate(translit_map).lower()
+
 # Kontrola 1.argumentu příkazového řádku / Checks arguments command line arguments
 def validate_args_okres(uzemi, okres_dict):
     translit_map = str.maketrans("áčďéěíňóřšťúůýžÚČŠŽ", "acdeeinorstuuyzUCSZ")
-    uzemi_translit = uzemi.translate(translit_map).lower()
-
-    if uzemi_translit == "zahranici":
-        print("Detekován speciální případ: Zahraničí")
-        url_zahranici = okres_dict.get("Zahraničí")
-        if url_zahranici:
-            return parse_zahranici(url_zahranici)
-        else:
-            print("Chyba: 'Zahraničí' nebylo nalezeno v seznamu okresů!")
-        sys.exit(1)
-
-    if uzemi in okres_dict:
-        return okres_dict[uzemi]
+    
     for key, url in okres_dict.items():
-        if key.translate(translit_map).lower() == uzemi_translit:
+        if key.translate(translit_map).lower() == uzemi:
             return url
     
     # Práce s chybou
@@ -104,9 +96,9 @@ def validate_args_okres(uzemi, okres_dict):
     podobne_okresy = [okres for okres in okres_dict if okres.lower().startswith(first_letter)]
     # Выводим список
     if podobne_okresy:
-        print("📌 Možná jste mysleli:", ", ".join(podobne_okresy))
+        print("Možná jste mysleli:", ", ".join(podobne_okresy))
     else:
-        print("📌 Žádné podobné okresy nenalezeny.")
+        print("Žádné podobné okresy nenalezeny.")
     sleep(3)
     sys.exit(1)
 
@@ -152,6 +144,7 @@ def result_election(obce_hlasy: dict):
             )
         }
         response = requests.get(url, headers=headers)
+        sleep(0.3)
         soup = BeautifulSoup(response.text, "html.parser")  # Создаём объект BeautifulSoup
         celkovy_pocet = [
             " ".join(th.stripped_strings)
@@ -179,7 +172,7 @@ def result_election(obce_hlasy: dict):
         }
     return vyber_dict
 
-def write_to_csv(volby, uzemi, filename):
+def write_to_csv(volby, filename):
     folder = Path("data_csv")  # Создаём объект пути
     folder.mkdir(parents=True, exist_ok=True)  # Создаём папку, если её нет
     file_path = folder / filename  # Автоматически соединяет путь
@@ -216,35 +209,78 @@ def write_to_csv(volby, uzemi, filename):
             writer.writerow(row)
     return f"Soubor '{filename}' je uložen do složky '{folder}'"
 
-def parse_zahranici():
-    """
-    Специальная функция для обработки голосования за границей.
-    """
-    print("🌍 Spouštím speciální scraping pro Zahraničí...")
+def parse_zahranici(url):
+    print("Spouštím speciální scraping pro Zahraničí...")
+    zahranici_dict ={}
+    base_url = "https://www.volby.cz/pls/ps2017nss/"
+    headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/109.0.0.0 Safari/537.36"
+            )
+        }
+    response = requests.get(url, headers=headers)
+    soup = BeautifulSoup(response.text, "html.parser")
+    rows = soup.select("tr")
+
+    # --- 1. Список стран (s2) ---
+    td_zeme = [row.find("td", attrs={"headers": "s2"}) for row in rows]
+    if td_zeme and td_zeme[0] is None:
+        td_zeme.pop(0)
+
+    last_valid_value = None
+    for i, td in enumerate(td_zeme):
+        if td is not None:
+            last_valid_value = td  # Сохраняем Tag
+        else:
+            td_zeme[i] = last_valid_value  # Заменяем None предыдущим Tag
+
+    # --- 2. Список городов (s3) ---
+    td_mesto = [row.find("td", attrs={"headers": "s3"}) for row in rows]
+    if td_mesto and td_mesto[0] is None:
+        td_mesto.pop(0)
+
+    # --- 3. Список ссылок (s4) ---
+    td_link = [row.find("td", attrs={"headers": "s4"}) for row in rows]
+    if td_link and td_link[0] is None:
+        td_link.pop(0)
+
+    # Проверяем, что длины всех списков совпадают
+    assert len(td_zeme) == len(td_mesto) == len(td_link), "Chyba: seznamy mají různou délku!"
+
+    # --- 4. Запись в словарь ---
+    for tg_zeme, tg_mesto, tg_link in zip(td_zeme, td_mesto, td_link):
+        a_tag_zeme = tg_zeme.find("a")
+        zeme = a_tag_zeme.text.strip() if a_tag_zeme else tg_zeme.get_text(strip=True)
+        mesto = tg_mesto.get_text(strip=True)  # Город
+
+        a_tag_link = tg_link.find("a")  # Получаем ссылку
+        if a_tag_link:
+            link = base_url + a_tag_link["href"]
+            zahranici_dict[link] = (zeme, mesto)  # Записываем в словарь
     
-    url_zahranici = "https://www.volby.cz/pls/ps2017nss/ps32?xjazyk=CZ&xkraj=99"
-    html = get_html(url_zahranici)
-    
-    # Здесь нужно реализовать логику парсинга для "Zahraničí"
-    # Например, можно вызывать result_election() с особыми параметрами
-    
-    return html  # Или другой обработанный результат
+    return zahranici_dict
 
 def main():
-    Odkaz na výsledky voleb
+    # Odkaz na výsledky voleb
     url_volby_2017 = "https://www.volby.cz/pls/ps2017nss/ps3?xjazyk=CZ"
     cmd_args = validate_cmd()
-    uzemi, filename = cmd_args
     html_main = get_html(url_volby_2017)
     okres_urls = get_okres_url(html_main)
-    url_uzemi = validate_args_okres(uzemi, okres_urls)
+    uzemi, filename = cmd_args
+    uzemi_translit = transliterate_input(uzemi)
+    url_uzemi = validate_args_okres(uzemi_translit, okres_urls)
     filename = validate_args_filename(filename)
     html_uzemi = get_html(url_uzemi)
-    obce_urls = get_obce_urls(html_uzemi)
+    if uzemi_translit == "zahranici":
+        obce_urls = parse_zahranici(url_uzemi)
+    else:
+        obce_urls = get_obce_urls(html_uzemi)
     volby = result_election(obce_urls)
     print(f"Všechna data jsou připravena pro zápis do {filename}")
     sleep(3)
-    finale = write_to_csv(volby, uzemi, filename)
+    finale = write_to_csv(volby, filename)
     print(finale)
     sleep(3)
     
@@ -253,21 +289,7 @@ def main():
 
 if __name__ == "__main__":
     main()
-    # url_volby_2017 = "https://www.volby.cz/pls/ps2017nss/ps3?xjazyk=CZ"
-    # cmd_args = validate_cmd()
-    # uzemi, filename = cmd_args
-    # html_main = get_html(url_volby_2017)
-    # okres_urls = get_okres_url(html_main)
-    # url_uzemi = validate_args_okres(uzemi, okres_urls)
-    # filename = validate_args_filename(filename)
-    # html_uzemi = get_html(url_uzemi)
-    # obce_urls = get_obce_urls(html_uzemi)
-    # volby = result_election(obce_urls)
-    # print(f"Všechna data jsou připravena pro zápis do {filename}")
-    # sleep(3)
-    # finale = write_to_csv(volby, uzemi, filename)
-    # print(finale)
-    # sleep(3)
+    
     # TESTS: zakomentuj před odevzdáním
     # print("Stránka byla úspěšně načtena.")
     # print(okres_urls) # контрольный вывод данных
