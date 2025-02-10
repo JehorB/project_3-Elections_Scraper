@@ -34,7 +34,7 @@ def get_html(url: str) -> str:
     }
     try:
         response = requests.get(url, headers=headers)
-        sleep(1) # Přidáme pauzu mezi požadavky (zabrání blokaci IP)
+        #sleep(1) # Přidáme pauzu mezi požadavky (zabrání blokaci IP)
         if response.status_code != 200:
             print(f"Chyba při načítání stránky ({url}): {response.status_code}")
             sys.exit(1)  # Ukončí program s chybovým kódem 1
@@ -265,7 +265,7 @@ def result_election(obce_hlasy: dict) -> dict:
     vyber_dict = {}
     for url, obec in obce_hlasy.items():
         html = get_html(url)
-        sleep(0.3)
+        #sleep(0.3)
         soup = BeautifulSoup(html, "html.parser")
         celkovy_pocet = [
             " ".join(th.stripped_strings)
