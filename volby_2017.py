@@ -34,16 +34,11 @@ def get_html(url: str) -> str:
     }
     try:
         response = requests.get(url, headers=headers)
-        #sleep(1) # Přidáme pauzu mezi požadavky (zabrání blokaci IP)
-        if response.status_code != 200:
-            print(f"Chyba při načítání stránky ({url}): {response.status_code}")
-            sys.exit(1)  # Ukončí program s chybovým kódem 1
-        
-        return response.text  # Vrací HTML obsah stránky jako text
-    
+        response.raise_for_status()  # Проверяет статус-код и выбрасывает ошибку при 4xx/5xx
     except requests.exceptions.RequestException as e:
-        print(f"Chyba při připojení k URL ({url}): {e}")
-        sys.exit(1)  # Ukončí program při síťové chybě
+        raise RuntimeError(f"Chyba při načítání stránky {url}: {e}")
+    
+    return response.text
 
 def get_okres_url(html: str) -> dict:
     """
