@@ -34,7 +34,7 @@ def get_html(url: str) -> str:
     }
     try:
         response = requests.get(url, headers=headers)
-        response.raise_for_status()  # Проверяет статус-код и выбрасывает ошибку при 4xx/5xx
+        response.raise_for_status()  # Zkontroluje status kód a při 4xx/5xx vyhodí chybu.
     except requests.exceptions.RequestException as e:
         raise RuntimeError(f"Chyba při načítání stránky {url}: {e}")
     
